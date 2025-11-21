@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>ExpenseManagementApp</name>
+    </assembly>
+    <members>
+        <member name="M:ExpenseManagementApp.Controllers.ExpensesController.GetExpenses(System.Nullable{System.Int32},System.Nullable{System.Int32})">
+            <summary>
+            Get all expenses, optionally filtered by user ID or status ID
+            </summary>
+            <param name="userId">Filter by user ID (optional)</param>
+            <param name="statusId">Filter by status ID (optional)</param>
+            <returns>List of expenses</returns>
+        </member>
+        <member name="M:ExpenseManagementApp.Controllers.ExpensesController.GetExpense(System.Int32)">
+            <summary>
+            Get a specific expense by ID
+            </summary>
+            <param name="id">Expense ID</param>
+            <returns>Expense details</returns>
+        </member>
+        <member name="M:ExpenseManagementApp.Controllers.ExpensesController.CreateExpense(System.Int32,ExpenseManagementApp.Models.ExpenseCreateDto)">
+            <summary>
+            Create a new expense
+            </summary>
+            <param name="userId">User ID creating the expense</param>
+            <param name="dto">Expense details</param>
+            <returns>Created expense</returns>
+        </member>
+        <member name="M:ExpenseManagementApp.Controllers.ExpensesController.UpdateExpense(System.Int32,ExpenseManagementApp.Models.ExpenseUpdateDto)">
+            <summary>
+            Update an existing expense
+            </summary>
+            <param name="id">Expense ID</param>
+            <param name="dto">Updated expense details</param>
+            <returns>No content on success</returns>
+        </member>
+        <member name="M:ExpenseManagementApp.Controllers.ExpensesController.UpdateExpenseStatus(System.Int32,ExpenseManagementApp.Models.ExpenseStatusUpdateDto,System.Nullable{System.Int32})">
+            <summary>
+            Update expense status (submit, approve, reject)
+            </summary>
+            <param name="id">Expense ID</param>
+            <param name="dto">Status update details</param>
+            <param name="reviewedBy">User ID of reviewer (for approve/reject)</param>
+            <returns>No content on success</returns>
+        </member>
+        <member name="M:ExpenseManagementApp.Controllers.ExpensesController.DeleteExpense(System.Int32)">
+            <summary>
+            Delete an expense
+            </summary>
+            <param name="id">Expense ID</param>
+            <returns>No content on success</returns>
+        </member>
+        <member name="M:ExpenseManagementApp.Controllers.ExpensesController.GetCategories">
+            <summary>
+            Get all expense categories
+            </summary>
+            <returns>List of categories</returns>
+        </member>
+        <member name="M:ExpenseManagementApp.Controllers.ExpensesController.GetStatuses">
+            <summary>
+            Get all expense statuses
+            </summary>
+            <returns>List of statuses</returns>
+        </member>
+        <member name="M:ExpenseManagementApp.Controllers.ExpensesController.GetUsers">
+            <summary>
+            Get all users
+            </summary>
+            <returns>List of users</returns>
+        </member>
+    </members>
+</doc>

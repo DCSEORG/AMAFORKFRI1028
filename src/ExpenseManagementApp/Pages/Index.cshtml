@@ -1,0 +1,406 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Expense Management";
+}
+
+@if (Model.IsUsingDummyData && !string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <strong>⚠️ Database Connection Error:</strong> @Model.ErrorMessage
+        <br /><small>Using dummy data for demonstration purposes.</small>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4 fw-bold text-primary">
+                <i class="bi bi-receipt-cutoff"></i> Expense Management
+            </h1>
+            <p class="lead text-muted">Track and manage your expenses efficiently</p>
+        </div>
+        <div class="col-auto">
+            <button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#createExpenseModal">
+                <i class="bi bi-plus-circle"></i> New Expense
+            </button>
+            <a href="/swagger" class="btn btn-outline-secondary btn-lg ms-2" target="_blank">
+                <i class="bi bi-code-square"></i> API Docs
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-primary bg-opacity-10 text-primary p-3 rounded">
+                                <i class="bi bi-receipt fs-3"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Total Expenses</h6>
+                            <h3 class="mb-0">@Model.Expenses.Count()</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-warning bg-opacity-10 text-warning p-3 rounded">
+                                <i class="bi bi-hourglass-split fs-3"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Pending</h6>
+                            <h3 class="mb-0">@Model.Expenses.Count(e => e.StatusName == "Submitted")</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-success bg-opacity-10 text-success p-3 rounded">
+                                <i class="bi bi-check-circle fs-3"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Approved</h6>
+                            <h3 class="mb-0">@Model.Expenses.Count(e => e.StatusName == "Approved")</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-info bg-opacity-10 text-info p-3 rounded">
+                                <i class="bi bi-currency-pound fs-3"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="text-muted mb-1">Total Amount</h6>
+                            <h3 class="mb-0">£@Model.Expenses.Sum(e => e.Amount).ToString("N2")</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Filter by Status</label>
+                    <select class="form-select" id="statusFilter">
+                        <option value="">All Statuses</option>
+                        @foreach (var status in Model.Statuses)
+                        {
+                            <option value="@status.StatusId">@status.StatusName</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Filter by Category</label>
+                    <select class="form-select" id="categoryFilter">
+                        <option value="">All Categories</option>
+                        @foreach (var category in Model.Categories)
+                        {
+                            <option value="@category.CategoryId">@category.CategoryName</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold">Filter by User</label>
+                    <select class="form-select" id="userFilter">
+                        <option value="">All Users</option>
+                        @foreach (var user in Model.Users)
+                        {
+                            <option value="@user.UserId">@user.UserName</option>
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expenses Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 py-3">
+            <h5 class="mb-0 fw-bold">Expenses List</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="expensesTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="px-4">Date</th>
+                            <th>User</th>
+                            <th>Category</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th class="text-end px-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var expense in Model.Expenses.OrderByDescending(e => e.ExpenseDate))
+                        {
+                            <tr data-status="@expense.StatusId" data-category="@expense.CategoryId" data-user="@expense.UserId">
+                                <td class="px-4">@expense.ExpenseDate.ToString("dd MMM yyyy")</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="bg-primary bg-opacity-10 text-primary rounded-circle p-2 me-2">
+                                            <i class="bi bi-person-fill"></i>
+                                        </div>
+                                        <span>@expense.UserName</span>
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-secondary">@expense.CategoryName</span></td>
+                                <td>@expense.Description</td>
+                                <td><strong>£@expense.Amount.ToString("N2")</strong></td>
+                                <td>
+                                    @if (expense.StatusName == "Draft")
+                                    {
+                                        <span class="badge bg-secondary"><i class="bi bi-pencil"></i> Draft</span>
+                                    }
+                                    else if (expense.StatusName == "Submitted")
+                                    {
+                                        <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Submitted</span>
+                                    }
+                                    else if (expense.StatusName == "Approved")
+                                    {
+                                        <span class="badge bg-success"><i class="bi bi-check-circle"></i> Approved</span>
+                                    }
+                                    else if (expense.StatusName == "Rejected")
+                                    {
+                                        <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Rejected</span>
+                                    }
+                                </td>
+                                <td class="text-end px-4">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="viewExpense(@expense.ExpenseId)">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    @if (expense.StatusName == "Draft" || expense.StatusName == "Rejected")
+                                    {
+                                        <button class="btn btn-sm btn-outline-success" onclick="submitExpense(@expense.ExpenseId)">
+                                            <i class="bi bi-send"></i>
+                                        </button>
+                                    }
+                                    @if (expense.StatusName == "Submitted")
+                                    {
+                                        <button class="btn btn-sm btn-outline-success" onclick="approveExpense(@expense.ExpenseId)">
+                                            <i class="bi bi-check"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="rejectExpense(@expense.ExpenseId)">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Expense Modal -->
+<div class="modal fade" id="createExpenseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle"></i> Create New Expense</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createExpenseForm">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">User</label>
+                        <select class="form-select" id="newUserId" required>
+                            @foreach (var user in Model.Users)
+                            {
+                                <option value="@user.UserId">@user.UserName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Category</label>
+                        <select class="form-select" id="newCategoryId" required>
+                            @foreach (var category in Model.Categories)
+                            {
+                                <option value="@category.CategoryId">@category.CategoryName</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Amount (£)</label>
+                        <input type="number" class="form-control" id="newAmount" step="0.01" min="0.01" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Date</label>
+                        <input type="date" class="form-control" id="newExpenseDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Description</label>
+                        <textarea class="form-control" id="newDescription" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createExpense()">
+                    <i class="bi bi-check-circle"></i> Create Expense
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Filter functionality
+        document.getElementById('statusFilter').addEventListener('change', filterTable);
+        document.getElementById('categoryFilter').addEventListener('change', filterTable);
+        document.getElementById('userFilter').addEventListener('change', filterTable);
+
+        function filterTable() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            const userFilter = document.getElementById('userFilter').value;
+            const rows = document.querySelectorAll('#expensesTable tbody tr');
+
+            rows.forEach(row => {
+                const status = row.dataset.status;
+                const category = row.dataset.category;
+                const user = row.dataset.user;
+
+                const statusMatch = !statusFilter || status === statusFilter;
+                const categoryMatch = !categoryFilter || category === categoryFilter;
+                const userMatch = !userFilter || user === userFilter;
+
+                row.style.display = (statusMatch && categoryMatch && userMatch) ? '' : 'none';
+            });
+        }
+
+        // Set today's date as default
+        document.getElementById('newExpenseDate').valueAsDate = new Date();
+
+        async function createExpense() {
+            const userId = document.getElementById('newUserId').value;
+            const categoryId = document.getElementById('newCategoryId').value;
+            const amount = parseFloat(document.getElementById('newAmount').value);
+            const expenseDate = document.getElementById('newExpenseDate').value;
+            const description = document.getElementById('newDescription').value;
+
+            const data = {
+                categoryId: parseInt(categoryId),
+                amountMinor: Math.round(amount * 100),
+                expenseDate: expenseDate,
+                description: description
+            };
+
+            try {
+                const response = await fetch(`/api/expenses?userId=${userId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert('Expense created successfully!');
+                    window.location.reload();
+                } else {
+                    alert('Failed to create expense');
+                }
+            } catch (error) {
+                alert('Error creating expense: ' + error.message);
+            }
+        }
+
+        async function submitExpense(id) {
+            if (confirm('Submit this expense for approval?')) {
+                try {
+                    const response = await fetch(`/api/expenses/${id}/status`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ statusId: 2 })
+                    });
+
+                    if (response.ok) {
+                        alert('Expense submitted!');
+                        window.location.reload();
+                    } else {
+                        alert('Failed to submit expense');
+                    }
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                }
+            }
+        }
+
+        async function approveExpense(id) {
+            if (confirm('Approve this expense?')) {
+                try {
+                    const response = await fetch(`/api/expenses/${id}/status?reviewedBy=2`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ statusId: 3 })
+                    });
+
+                    if (response.ok) {
+                        alert('Expense approved!');
+                        window.location.reload();
+                    } else {
+                        alert('Failed to approve expense');
+                    }
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                }
+            }
+        }
+
+        async function rejectExpense(id) {
+            if (confirm('Reject this expense?')) {
+                try {
+                    const response = await fetch(`/api/expenses/${id}/status?reviewedBy=2`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ statusId: 4 })
+                    });
+
+                    if (response.ok) {
+                        alert('Expense rejected!');
+                        window.location.reload();
+                    } else {
+                        alert('Failed to reject expense');
+                    }
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                }
+            }
+        }
+
+        function viewExpense(id) {
+            window.open(`/api/expenses/${id}`, '_blank');
+        }
+    </script>
+}
