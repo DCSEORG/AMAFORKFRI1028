@@ -1,0 +1,206 @@
+@page
+@model ChatModel
+@{
+    ViewData["Title"] = "AI Assistant";
+}
+
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-4 fw-bold text-primary">
+                <i class="bi bi-chat-dots"></i> AI Assistant
+            </h1>
+            <p class="lead text-muted">Ask questions about expenses or request actions</p>
+        </div>
+    </div>
+
+    @if (!Model.GenAIAvailable)
+    {
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <h5 class="alert-heading"><i class="bi bi-info-circle"></i> GenAI Services Not Deployed</h5>
+            <p>@(Model.ErrorMessage ?? "The AI assistant requires Azure OpenAI services. Please run the deploy-with-chat.sh script to enable this feature.")</p>
+            <hr>
+            <p class="mb-0">
+                <strong>To enable the AI assistant:</strong><br>
+                1. Open a terminal<br>
+                2. Run: <code>./deploy-with-chat.sh</code><br>
+                3. Wait for deployment to complete<br>
+                4. Refresh this page
+            </p>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+
+        <!-- Dummy chat interface when GenAI is not available -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <div class="chat-container mb-4" style="height: 400px; overflow-y: auto; background: #f8f9fa; border-radius: 10px; padding: 20px;">
+                    <div class="text-center text-muted">
+                        <i class="bi bi-cloud-slash display-1"></i>
+                        <p class="mt-3">AI Assistant is not available in this deployment mode.</p>
+                        <p>Deploy with GenAI services to enable this feature.</p>
+                    </div>
+                </div>
+
+                <form class="d-flex gap-2" disabled>
+                    <input type="text" class="form-control" placeholder="AI Assistant is not available..." disabled>
+                    <button type="submit" class="btn btn-primary" disabled>
+                        <i class="bi bi-send"></i> Send
+                    </button>
+                </form>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            <div class="col-lg-8 mx-auto">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-primary text-white py-3">
+                        <h5 class="mb-0"><i class="bi bi-robot"></i> Chat with AI Assistant</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <!-- Chat messages area -->
+                        <div class="chat-container p-4" style="height: 500px; overflow-y: auto; background: linear-gradient(to bottom, #f8f9fa, #fff);">
+                            @{
+                                var messages = new List<DisplayMessage>();
+                                if (TempData["ChatMessages"] is string json)
+                                {
+                                    messages = System.Text.Json.JsonSerializer.Deserialize<List<DisplayMessage>>(json) ?? new List<DisplayMessage>();
+                                }
+                            }
+
+                            @if (messages.Count == 0)
+                            {
+                                <div class="text-center text-muted py-5">
+                                    <i class="bi bi-chat-dots display-1"></i>
+                                    <h4 class="mt-3">Welcome to the AI Assistant!</h4>
+                                    <p>Ask me anything about expenses. I can help you:</p>
+                                    <ul class="list-unstyled">
+                                        <li><i class="bi bi-check-circle text-success"></i> View and filter expenses</li>
+                                        <li><i class="bi bi-check-circle text-success"></i> Create new expenses</li>
+                                        <li><i class="bi bi-check-circle text-success"></i> Get information about categories and users</li>
+                                        <li><i class="bi bi-check-circle text-success"></i> Answer questions about the expense system</li>
+                                    </ul>
+                                    <div class="mt-4">
+                                        <p class="fw-bold">Try asking:</p>
+                                        <div class="d-flex flex-wrap gap-2 justify-content-center">
+                                            <button class="btn btn-sm btn-outline-primary" onclick="document.getElementById('userMessage').value='Show me all submitted expenses'; document.getElementById('chatForm').submit();">
+                                                Show submitted expenses
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="document.getElementById('userMessage').value='Create an expense for £50 travel on 2025-11-20'; document.getElementById('chatForm').submit();">
+                                                Create an expense
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-primary" onclick="document.getElementById('userMessage').value='What categories are available?'; document.getElementById('chatForm').submit();">
+                                                List categories
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                @foreach (var message in messages)
+                                {
+                                    <div class="mb-3 @(message.Role == "user" ? "text-end" : "")">
+                                        <div class="d-inline-block" style="max-width: 70%;">
+                                            @if (message.Role == "user")
+                                            {
+                                                <div class="bg-primary text-white p-3 rounded-3 shadow-sm">
+                                                    <div class="d-flex align-items-start">
+                                                        <div class="me-2">
+                                                            <i class="bi bi-person-circle fs-4"></i>
+                                                        </div>
+                                                        <div>
+                                                            <small class="d-block mb-1 opacity-75">You</small>
+                                                            <div>@message.Content</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <div class="bg-light p-3 rounded-3 shadow-sm">
+                                                    <div class="d-flex align-items-start">
+                                                        <div class="me-2 text-primary">
+                                                            <i class="bi bi-robot fs-4"></i>
+                                                        </div>
+                                                        <div>
+                                                            <small class="d-block mb-1 text-muted fw-semibold">AI Assistant</small>
+                                                            <div style="white-space: pre-wrap;">@message.Content</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+
+                        <!-- Input form -->
+                        <div class="border-top p-3 bg-light">
+                            <form method="post" id="chatForm" class="d-flex gap-2">
+                                <input type="text" 
+                                       id="userMessage"
+                                       name="UserMessage" 
+                                       class="form-control form-control-lg" 
+                                       placeholder="Ask me anything about expenses..." 
+                                       required
+                                       autocomplete="off">
+                                <button type="submit" class="btn btn-primary btn-lg px-4">
+                                    <i class="bi bi-send"></i> Send
+                                </button>
+                            </form>
+                            <small class="text-muted mt-2 d-block">
+                                <i class="bi bi-info-circle"></i> 
+                                Powered by Azure OpenAI GPT-4o with function calling
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Example queries card -->
+                <div class="card border-0 shadow-sm mt-4">
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-3"><i class="bi bi-lightbulb"></i> Example Questions:</h6>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <button class="btn btn-sm btn-outline-secondary w-100 text-start" onclick="document.getElementById('userMessage').value='Show me all pending expenses'; document.getElementById('chatForm').submit();">
+                                    <i class="bi bi-arrow-right-circle"></i> Show pending expenses
+                                </button>
+                            </div>
+                            <div class="col-md-6">
+                                <button class="btn btn-sm btn-outline-secondary w-100 text-start" onclick="document.getElementById('userMessage').value='Create a new expense for meals £35.50 today'; document.getElementById('chatForm').submit();">
+                                    <i class="bi bi-arrow-right-circle"></i> Create meals expense
+                                </button>
+                            </div>
+                            <div class="col-md-6">
+                                <button class="btn btn-sm btn-outline-secondary w-100 text-start" onclick="document.getElementById('userMessage').value='How many expenses does Alice have?'; document.getElementById('chatForm').submit();">
+                                    <i class="bi bi-arrow-right-circle"></i> Count user expenses
+                                </button>
+                            </div>
+                            <div class="col-md-6">
+                                <button class="btn btn-sm btn-outline-secondary w-100 text-start" onclick="document.getElementById('userMessage').value='What users are in the system?'; document.getElementById('chatForm').submit();">
+                                    <i class="bi bi-arrow-right-circle"></i> List all users
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        // Auto-scroll to bottom of chat
+        const chatContainer = document.querySelector('.chat-container');
+        if (chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Focus on input field
+        document.getElementById('userMessage')?.focus();
+    </script>
+}
